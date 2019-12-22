@@ -1,0 +1,31 @@
+import pytest
+import libyaz0
+import syaz0
+import wszst_yaz0
+from files import TEST_FILES, TEST_FILE_DATA
+
+
+@pytest.mark.parametrize("file", TEST_FILES)
+def test_wszst_yaz0(benchmark, file):
+    benchmark.group = "decomp: " + file
+    wszst_yaz0._use_c_module = False
+    benchmark(wszst_yaz0.decompress, TEST_FILE_DATA[file])
+
+
+@pytest.mark.parametrize("file", TEST_FILES)
+def test_wszst_yaz0_c(benchmark, file):
+    benchmark.group = "decomp: " + file
+    wszst_yaz0._use_c_module = True
+    benchmark(wszst_yaz0.decompress, TEST_FILE_DATA[file])
+
+
+@pytest.mark.parametrize("file", TEST_FILES)
+def test_syaz0(benchmark, file):
+    benchmark.group = "decomp: " + file
+    benchmark(syaz0.decompress, TEST_FILE_DATA[file])
+
+
+@pytest.mark.parametrize("file", TEST_FILES)
+def test_libyaz0(benchmark, file):
+    benchmark.group = "decomp: " + file
+    benchmark(libyaz0.decompress, TEST_FILE_DATA[file])
