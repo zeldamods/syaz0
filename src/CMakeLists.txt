@@ -27,3 +27,6 @@ else()
 endif()
 
 target_include_directories(syaz0 PUBLIC ./lib/tcb)
+option(ZLIB_ENABLE_TESTS "" OFF)
+add_subdirectory(./lib/zlib-ng)
+target_link_libraries(syaz0 PRIVATE zlib)

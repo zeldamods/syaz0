@@ -22,8 +22,8 @@
 #include <algorithm>
 #include <bitset>
 #include <cstring>
-#include <list>
-#include <unordered_map>
+
+#include <zlib-ng.h>
 
 #include "common/binary_reader.h"
 
@@ -49,110 +49,60 @@ std::optional<Header> GetHeader(tcb::span<const u8> data) {
 }
 
 namespace {
-struct Match {
-  size_t offset;
-  size_t length;
+class GroupWriter {
+public:
+  GroupWriter(std::vector<u8>& result) : m_result{result} { Reset(); }
+
+  void HandleZlibMatch(u32 dist, u32 lc) {
+    if (dist == 0) {
+      // Literal.
+      m_group_header.set(7 - m_pending_chunks);
+      m_result.push_back(u8(lc));
+    } else {
+      // Back reference.
+      constexpr u32 ZlibMinMatch = 3;
+      WriteMatch(dist - 1, lc + ZlibMinMatch);
+    }
+
+    ++m_pending_chunks;
+    if (m_pending_chunks == ChunksPerGroup) {
+      m_result[m_group_header_offset] = u8(m_group_header.to_ulong());
+      Reset();
+    }
+  }
+
+  // Must be called after zlib has completed to ensure the last group is written.
+  void Finalise() {
+    if (m_pending_chunks != 0)
+      m_result[m_group_header_offset] = u8(m_group_header.to_ulong());
+  }
+
+private:
+  void Reset() {
+    m_pending_chunks = 0;
+    m_group_header.reset();
+    m_group_header_offset = m_result.size();
+    m_result.push_back(0xFF);
+  }
+
+  void WriteMatch(u32 distance, u32 length) {
+    if (length < 18) {
+      m_result.push_back(((length - 2) << 4) | u8(distance >> 8));
+      m_result.push_back(u8(distance));
+    } else {
+      // If the match is longer than 18 bytes, 3 bytes are needed to write the match.
+      const size_t actual_length = std::min<size_t>(MaximumMatchLength, length);
+      m_result.push_back(u8(distance >> 8));
+      m_result.push_back(u8(distance));
+      m_result.push_back(u8(actual_length - 0x12));
+    }
+  }
+
+  std::vector<u8>& m_result;
+  size_t m_pending_chunks;
+  std::bitset<8> m_group_header;
+  std::size_t m_group_header_offset;
 };
-
-size_t GetWindowBeginOffset(size_t offset) {
-  return std::max(0, int(offset) - int(WindowSize));
-}
-
-// Naive implementation which scans the sliding window directly.
-// Results in an O(n^2) complexity. Vectorized memchr helps keep this usable.
-[[maybe_unused]] Match FindMatch(tcb::span<const u8> src, size_t offset) {
-  const size_t window_begin_offset = GetWindowBeginOffset(offset);
-  Match best_match{};
-  for (const u8* pos = src.data() + window_begin_offset; pos < src.data() + offset; ++pos) {
-    // memchr is much faster than a handrolled loop for at least GCC.
-    pos = static_cast<const u8*>(std::memchr(pos, src[offset], &src[offset] - pos));
-    if (!pos)
-      break;
-
-    size_t match_length = 0;
-    while (match_length < src.size() - offset && match_length < MaximumMatchLength) {
-      if (pos[match_length] != src[offset + match_length])
-        break;
-      match_length += 1;
-    }
-    if (match_length >= best_match.length) {
-      best_match.length = match_length;
-      best_match.offset = pos - src.data();
-    }
-  }
-  return best_match;
-}
-
-inline u32 StrToKey(const u8* key) {
-  return key[0] << 16 | key[1] << 8 | key[2];
-}
-
-using HashTable = std::unordered_map<u32, std::list<size_t>>;
-
-Match FindMatchWithTable(tcb::span<const u8> src, size_t offset, HashTable& table) {
-  Match best_match{};
-  const auto it = table.find(StrToKey(&src[offset]));
-  if (it == table.end())
-    return best_match;
-  for (const size_t match_pos : it->second) {
-    size_t match_length = 0;
-    while (match_length < src.size() - offset && match_length < MaximumMatchLength) {
-      if (src[match_pos + match_length] != src[offset + match_length])
-        break;
-      match_length += 1;
-    }
-    if (match_length > best_match.length) {
-      best_match.length = match_length;
-      best_match.offset = match_pos;
-    }
-  }
-  return best_match;
-}
-
-size_t WriteMatch(const Match& match, size_t offset, std::vector<u8>& result) {
-  const size_t distance = offset - match.offset - 1;
-
-  if (match.length < 18) {
-    result.push_back(((match.length - 2) << 4) | u8(distance >> 8));
-    result.push_back(u8(distance));
-    return match.length;
-  }
-
-  // If the match is longer than 18 bytes, 3 bytes are needed to write the match.
-  const size_t actual_length = std::min(MaximumMatchLength, match.length);
-  result.push_back(u8(distance >> 8));
-  result.push_back(u8(distance));
-  result.push_back(u8(actual_length - 0x12));
-  return actual_length;
-}
-
-void UpdateHashTable(tcb::span<const u8> src, size_t offset, size_t processed, HashTable& table) {
-  const size_t window_begin_offset = GetWindowBeginOffset(offset);
-  const size_t new_window_begin_offset = window_begin_offset + processed;
-
-  // Remove elements that will be moved out of the window.
-  for (size_t i = 0; i < processed; ++i) {
-    const u8* data = &src[window_begin_offset + i];
-    if (data + 2 >= src.end())
-      break;
-    const auto it = table.find(StrToKey(data));
-    if (it == table.end())
-      continue;
-    while (!it->second.empty() && it->second.back() < new_window_begin_offset)
-      it->second.pop_back();
-  }
-
-  // Add elements that will be moved into the window.
-  for (size_t i = 0; i < processed; ++i) {
-    const u8* data = &src[offset + i];
-    if (data + 2 >= src.end())
-      break;
-    auto& list = table[StrToKey(data)];
-    if (list.size() > 128)
-      list.pop_back();
-    list.push_front(offset + i);
-  }
-}
 }  // namespace
 
 std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment) {
@@ -167,35 +117,19 @@ std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment) {
   header.reserved.fill(0);
   std::memcpy(result.data(), &header, sizeof(header));
 
-  // Each deque is kept sorted, with the most recent entries
-  // (those closest to the offset) at the front.
-  HashTable table;
+  GroupWriter writer{result};
 
-  size_t offset = 0;
-  while (offset < src.size()) {
-    std::bitset<8> group_header;
-    // Do not keep a reference because it could be invalidated.
-    const size_t header_offset = result.size();
-    result.emplace_back(0xFF);
+  // Let zlib do the heavy lifting.
+  std::array<u8, 8> dummy{};
+  size_t dummy_size = dummy.size();
+  const int ret = zng_compress2(
+      dummy.data(), &dummy_size, src.data(), src.size(), 9,
+      [](void* w, u32 dist, u32 lc) { static_cast<GroupWriter*>(w)->HandleZlibMatch(dist, lc); },
+      &writer);
+  if (ret != Z_OK)
+    throw std::runtime_error("zng_compress failed");
 
-    for (size_t chunk_idx = 0; chunk_idx < ChunksPerGroup && offset < src.size(); ++chunk_idx) {
-      const Match match = FindMatchWithTable(src, offset, table);
-      size_t processed;
-      if (match.length <= 2) {
-        group_header.set(7 - chunk_idx);
-        result.push_back(src[offset]);
-        processed = 1;
-      } else {
-        processed = WriteMatch(match, offset, result);
-      }
-
-      UpdateHashTable(src, offset, processed, table);
-      offset += processed;
-    }
-
-    result[header_offset] = u8(group_header.to_ulong());
-  }
-
+  writer.Finalise();
   return result;
 }
 
