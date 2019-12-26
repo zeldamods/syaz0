@@ -41,7 +41,7 @@ enum class Endianness {
 namespace detail {
 inline Endianness GetPlatformEndianness() {
 #ifdef _WIN32
-  return false;
+  return Endianness::Little;
 #else
   return htonl(0x12345678) == 0x12345678 ? Endianness::Big : Endianness::Little;
 #endif
