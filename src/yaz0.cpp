@@ -105,7 +105,7 @@ private:
 };
 }  // namespace
 
-std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment) {
+std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment, int level) {
   std::vector<u8> result(sizeof(Header));
   result.reserve(src.size());
 
@@ -123,7 +123,7 @@ std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment) {
   std::array<u8, 8> dummy{};
   size_t dummy_size = dummy.size();
   const int ret = zng_compress2(
-      dummy.data(), &dummy_size, src.data(), src.size(), 9,
+      dummy.data(), &dummy_size, src.data(), src.size(), std::clamp<int>(level, 6, 9),
       [](void* w, u32 dist, u32 lc) { static_cast<GroupWriter*>(w)->HandleZlibMatch(dist, lc); },
       &writer);
   if (ret != Z_OK)

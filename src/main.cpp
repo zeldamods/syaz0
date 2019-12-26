@@ -62,9 +62,9 @@ PYBIND11_MODULE(syaz0, m) {
       "data"_a);
   m.def(
       "compress",
-      [](py::bytes src_py) {
+      [](py::bytes src_py, u32 data_alignment, int level) {
         const auto src = detail::PyBytesToSpan(src_py);
-        return syaz0::Compress(src);
+        return syaz0::Compress(src, data_alignment, level);
       },
-      "data"_a);
+      "data"_a, "data_alignment"_a = 0, "level"_a = 7);
 }

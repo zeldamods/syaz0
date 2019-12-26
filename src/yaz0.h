@@ -44,7 +44,11 @@ static_assert(sizeof(Header) == 0x10);
 
 std::optional<Header> GetHeader(tcb::span<const u8> data);
 
-std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment = 0);
+/// @param src  Source data
+/// @param data_alignment  Required buffer alignment hint for decompression
+/// @param level  Compression level (6 to 9; 6 is fastest and 9 is slowest)
+std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment = 0, int level = 7);
+
 std::vector<u8> Decompress(tcb::span<const u8> src);
 // For increased flexibility, allocating the destination buffer can be done manually.
 // In that case, the header is assumed to be valid, and the buffer size
