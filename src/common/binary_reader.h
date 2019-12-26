@@ -65,8 +65,10 @@ public:
   template <typename T, bool Safe = true>
   std::optional<T> Read() {
     static_assert(std::is_pod_v<T>);
-    if (Safe && m_offset + sizeof(T) > m_data.size())
-      return std::nullopt;
+    if constexpr (Safe) {
+      if (m_offset + sizeof(T) > m_data.size())
+        return std::nullopt;
+    }
     T value;
     std::memcpy(&value, &m_data[m_offset], sizeof(T));
     m_offset += sizeof(T);
@@ -78,8 +80,10 @@ public:
 
   template <bool Safe = true>
   std::optional<u32> ReadU24() {
-    if (Safe && m_offset + 3 > m_data.size())
-      return std::nullopt;
+    if constexpr (Safe) {
+      if (m_offset + 3 > m_data.size())
+        return std::nullopt;
+    }
     const size_t offset = m_offset;
     m_offset += 3;
     if (m_endian == Endianness::Big)
