@@ -54,5 +54,8 @@ std::vector<u8> Decompress(tcb::span<const u8> src);
 // In that case, the header is assumed to be valid, and the buffer size
 // must be equal to the uncompressed data size.
 void Decompress(tcb::span<const u8> src, tcb::span<u8> dst);
+// Same, but additionally assumes that the source is well-formed.
+// DO NOT USE THIS FOR UNTRUSTED SOURCES.
+void DecompressUnsafe(tcb::span<const u8> src, tcb::span<u8> dst);
 
 }  // namespace syaz0

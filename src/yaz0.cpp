@@ -142,7 +142,8 @@ std::vector<u8> Decompress(tcb::span<const u8> src) {
   return result;
 }
 
-void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
+template <bool Safe>
+static void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
   common::BinaryReader reader{src, common::Endianness::Big};
   reader.Seek(sizeof(Header));
 
@@ -150,16 +151,17 @@ void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
   size_t remaining_chunks = 0;
   for (auto dst_it = dst.begin(); dst_it < dst.end();) {
     if (remaining_chunks == 0) {
-      group_header = reader.Read<u8>().value();
+      group_header = reader.Read<u8, Safe>().value();
       remaining_chunks = ChunksPerGroup;
     }
 
     if (group_header & 0x80) {
-      *dst_it++ = reader.Read<u8>().value();
+      *dst_it++ = reader.Read<u8, Safe>().value();
     } else {
-      const u16 pair = reader.Read<u16>().value();
+      const u16 pair = reader.Read<u16, Safe>().value();
       const size_t distance = (pair & 0x0FFF) + 1;
-      const size_t length = ((pair >> 12) ? (pair >> 12) : (reader.Read<u8>().value() + 16)) + 2;
+      const size_t length =
+          ((pair >> 12) ? (pair >> 12) : (reader.Read<u8, Safe>().value() + 16)) + 2;
 
       const u8* base = dst_it - distance;
       if (base < dst.begin() || dst_it + length > dst.end()) {
@@ -175,4 +177,11 @@ void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
   }
 }
 
+void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
+  Decompress<true>(src, dst);
+}
+
+void DecompressUnsafe(tcb::span<const u8> src, tcb::span<u8> dst) {
+  Decompress<false>(src, dst);
+}
 }  // namespace syaz0

@@ -26,6 +26,12 @@ def test_syaz0(benchmark, file):
 
 
 @pytest.mark.parametrize("file", TEST_FILES)
+def test_syaz0_fast(benchmark, file):
+    benchmark.group = "decomp: " + file
+    benchmark(syaz0.decompress_unsafe, TEST_FILE_DATA[file])
+
+
+@pytest.mark.parametrize("file", TEST_FILES)
 def test_libyaz0(benchmark, file):
     benchmark.group = "decomp: " + file
     benchmark(libyaz0.decompress, TEST_FILE_DATA[file])

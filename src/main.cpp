@@ -60,6 +60,17 @@ PYBIND11_MODULE(syaz0, m) {
         return dst_py;
       },
       "data"_a);
+
+  m.def(
+      "decompress_unsafe",
+      [](py::bytes src_py) {
+        const auto src = detail::PyBytesToSpan(src_py);
+        py::bytes dst_py{nullptr, syaz0::GetHeader(src)->uncompressed_size};
+        syaz0::DecompressUnsafe(src, detail::PyBytesToSpan(dst_py));
+        return dst_py;
+      },
+      "data"_a);
+
   m.def(
       "compress",
       [](py::buffer src_py, u32 data_alignment, int level) {
