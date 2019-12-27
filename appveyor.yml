@@ -9,17 +9,13 @@ environment:
     - PYTHON: "C:\\Python37-x64"
       PYTHON_VERSION: "3.7"
       PYTHON_ARCH: "64"
-      MINICONDA: "C:\\Miniconda37-x64"
+      MINICONDA: "C:\\Miniconda36-x64"
     - PYTHON: "C:\\Python38-x64"
       PYTHON_VERSION: "3.8"
       PYTHON_ARCH: "64"
-      MINICONDA: "C:\\Miniconda37-x64"
+      MINICONDA: "C:\\Miniconda36-x64"
 
 install:
-  # https://github.com/appveyor/ci/issues/2571
-  - del C:\Windows\System32\libssl-*.dll C:\Windows\system32\libcrypto-*.dll
-  - del C:\Windows\SysWOW64\libssl-*.dll C:\Windows\SysWOW64\libcrypto-*.dll
-
   - git submodule update --init --recursive
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
   - conda config --set always_yes yes --set changeps1 no
