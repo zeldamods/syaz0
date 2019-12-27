@@ -15,7 +15,11 @@ For detailed benchmarks, see the results files in the test directory.
 
 ## Usage
 
-*syaz0* can be installed with `pip3 install syaz0`. Binary builds are provided for Windows 64 bits (only). (On all other platforms, building from source is required. Skip to the end of the README for more information.)
+*syaz0* can be installed with `pip3 install syaz0`. Binary builds are provided for Windows 64 bits (only). On all other platforms, building from source is required. Skip to the end of the README for more information.
+
+### `syaz0.get_header(data)`
+
+Returns a syaz0.Header corresponding to the Yaz0 file header with the fields *magic*, *uncompressed_size*, *data_alignment*, *reserved*.
 
 ### `syaz0.decompress(data)`
 
