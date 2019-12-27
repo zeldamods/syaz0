@@ -15,7 +15,7 @@ For detailed benchmarks, see the results files in the test directory.
 
 ## Usage
 
-*syaz0* can be installed with `pip3 install syaz0`.
+*syaz0* can be installed with `pip3 install syaz0`. Binary builds are provided for Windows 64 bits (only). (On all other platforms, building from source is required. Skip to the end of the README for more information.)
 
 ### `syaz0.decompress(data)`
 
@@ -59,9 +59,9 @@ Thus *syaz0* uses a copy of zlib-ng for all the heavy lifting (match searching).
 * MAX_MATCH was *not* increased. zlib assumes it is equal to 258 in
   too many places and increasing it actually gives worse compression ratios.
 
-### Building
+### Building from source
 
-*syaz0* requires:
+Building *syaz0* from source requires:
 
 * CMake 3.10+
 * A compiler that supports C++17
@@ -69,7 +69,9 @@ Thus *syaz0* uses a copy of zlib-ng for all the heavy lifting (match searching).
 * pybind11 2.4+ (including CMake config files)
 * setuptools
 
-Build with `python3 setup.py bdist_wheel`.
+When no binary build is available, pip will automatically build from source during the install process.
+
+To build from source manually, run `python3 setup.py bdist_wheel`.
 
 ## License
 
