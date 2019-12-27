@@ -41,12 +41,29 @@ static tcb::span<u8> PyBufferToSpan(py::buffer b) {
     throw py::value_error("Expected a non-empty bytes-like object");
   return {static_cast<u8*>(buffer.ptr), size_t(buffer.size)};
 }
+
+template <typename C, typename D, common::Endianness E>
+void Bind(py::class_<C>& cl, const char* name, common::EndianInt<D, E> C::*pm) {
+  cl.def_property(
+      name, [pm](const C& c) { return D(c.*pm); }, [pm](C& c, D value) { c.*pm = value; });
+}
 }  // namespace detail
 
 PYBIND11_MAKE_OPAQUE(std::vector<u8>);
 
 PYBIND11_MODULE(syaz0, m) {
   py::bind_vector<std::vector<u8>>(m, "Bytes", py::buffer_protocol());
+
+  auto header_cl = py::class_<syaz0::Header>(m, "Header");
+  header_cl.def_readwrite("magic", &syaz0::Header::magic);
+  detail::Bind(header_cl, "uncompressed_size", &syaz0::Header::uncompressed_size);
+  detail::Bind(header_cl, "data_alignment", &syaz0::Header::data_alignment);
+  header_cl.def_readwrite("reserved", &syaz0::Header::reserved);
+
+  m.def(
+      "get_header",
+      [](py::buffer data_py) { return syaz0::GetHeader(detail::PyBufferToSpan(data_py)).value(); },
+      "data"_a);
 
   m.def(
       "decompress",
