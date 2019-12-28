@@ -23,7 +23,7 @@ def main() -> None:
     if args.decompress or args.file.endswith(".yaz0"):
         result = syaz0.decompress(data)
         name = args.file.replace(".yaz0", "")
-        if Path(args.file).exists():
+        if Path(name).exists():
             name += ".decomp"
     else:
         result = syaz0.compress(data, data_alignment=args.alignment, level=args.level)
