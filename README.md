@@ -15,7 +15,11 @@ For detailed benchmarks, see the results files in the test directory.
 
 ## Usage
 
-*syaz0* can be installed with `pip3 install syaz0`. Binary builds are only provided for x86_64 Windows and recent Linux distributions (manylinux2014_x86_64). On all other platforms, building from source is required. Skip to the end of the README for more information.
+*syaz0* can be installed with `pip3 install syaz0`.
+
+Binary builds are only provided for x86_64 Windows and recent Linux distributions (manylinux2014_x86_64). For Linux, pip >=19.3 is required for the binary packages.
+
+On all other platforms, building from source is required. Skip to the end of the README for more information.
 
 ### `syaz0.get_header(data)`
 
